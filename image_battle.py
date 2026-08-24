@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
-from PIL import Image  # Добавлено для обработки изображений
+from PIL import Image
 
 # Подавляем предупреждения о непроверенных HTTPS-запросах
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -165,7 +165,7 @@ class ImageBattleGenerator:
                 'category': category
             }
         except Exception as e:
-            logger.warning(f"⚠️ Fallback error: {e}")
+            logger.warning(f"️ Fallback error: {e}")
             return None
 
     def generate_comparison_text(self, img1, img2, access_token):
@@ -235,7 +235,7 @@ class ImageBattleGenerator:
                 f.write(response.content)
             
             if path.stat().st_size == 0:
-                logger.warning(f"⚠️ Downloaded file is empty: {filename}")
+                logger.warning(f"️ Downloaded file is empty: {filename}")
                 return None
             
             logger.info(f"✅ Downloaded: {filename} ({path.stat().st_size} bytes)")
@@ -248,16 +248,13 @@ class ImageBattleGenerator:
         """Оптимизирует изображение под требования Telegram (макс. 1920px)"""
         try:
             with Image.open(filepath) as img:
-                # Конвертируем в RGB, если есть альфа-канал (PNG)
                 if img.mode in ("RGBA", "P"):
                     img = img.convert("RGB")
                 
-                # Telegram допускает до 10000px, но мы ограничим до 1920px для надежности и скорости
                 max_dimension = 1920
                 if img.width > max_dimension or img.height > max_dimension:
                     img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
                 
-                # Сохраняем обратно как JPEG с хорошим качеством
                 img.save(filepath, format="JPEG", quality=90)
                 logger.info(f"✅ Image optimized for Telegram: {filepath} ({img.width}x{img.height})")
                 return True
@@ -265,8 +262,29 @@ class ImageBattleGenerator:
             logger.error(f"❌ Error processing image {filepath}: {e}")
             return False
 
-    def create_poll(self, text, img1_path, img2_path):
-        """Создание опроса в Telegram"""
+    def save_battle_metadata(self, poll_message_id, img1_category, img2_category, 
+                            img1_path, img2_path, comparison_text):
+        """Сохраняет информацию о битве для последующего анализа"""
+        metadata = {
+            'poll_message_id': poll_message_id,
+            'chat_id': TELEGRAM_CHAT_ID,
+            'img1_category': img1_category,
+            'img2_category': img2_category,
+            'img1_path': img1_path,
+            'img2_path': img2_path,
+            'comparison_text': comparison_text,
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'battle_date': datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        }
+        
+        metadata_file = 'last_battle.json'
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"💾 Battle metadata saved to {metadata_file}")
+
+    def create_poll(self, text, img1_path, img2_path, img1_data, img2_data):
+        """Создание опроса в Telegram с сохранением metadata"""
         
         if not os.path.exists(img1_path) or not os.path.exists(img2_path):
             logger.error("❌ Image files not found!")
@@ -280,7 +298,7 @@ class ImageBattleGenerator:
                 files = {'photo': f}
                 data = {
                     'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': f"🔥 ВАРИАНТ 1\n\n{text}\n\n❤️ ВАРИАНТ 2 ниже 👇",
+                    'caption': f" ВАРИАНТ 1\n\n{text}\n\n❤️ ВАРИАНТ 2 ниже 👇",
                     'parse_mode': 'Markdown'
                 }
                 response = requests.post(url, data=data, files=files, timeout=30)
@@ -321,7 +339,21 @@ class ImageBattleGenerator:
                 logger.error(f"❌ Telegram API Error (sendPoll): {poll_response.status_code} - {poll_response.text}")
                 poll_response.raise_for_status()
             
+            poll_result = poll_response.json()
+            poll_message_id = poll_result['result']['message_id']
+            
             logger.info("✅ Post successfully published!")
+            
+            # Сохраняем metadata для будущего анализа
+            self.save_battle_metadata(
+                poll_message_id=poll_message_id,
+                img1_category=img1_data['category'],
+                img2_category=img2_data['category'],
+                img1_path=img1_path,
+                img2_path=img2_path,
+                comparison_text=text
+            )
+            
             return True
             
         except Exception as e:
@@ -337,7 +369,7 @@ class ImageBattleGenerator:
         cat1, cat2 = random.choice(self.battle_pairs)
         logger.info(f"⚔️ Battle: {cat1.upper()} vs {cat2.upper()}")
         
-        logger.info(f"\n📸 Fetching image 1 ({cat1})...")
+        logger.info(f"\n Fetching image 1 ({cat1})...")
         img1 = self.get_unsplash_image(cat1)
         
         if not img1 and cat1 == 'space':
@@ -375,24 +407,25 @@ class ImageBattleGenerator:
         downloaded2 = self.download_image(img2['download_url'], img2_path)
         
         if not downloaded1 or not downloaded2:
-            logger.error("❌ Failed to download images")
+            logger.error(" Failed to download images")
             return False
         
-        # 🔥 НОВОЕ: Оптимизация изображений под требования Telegram
+        # Оптимизация изображений под требования Telegram
         if not self.ensure_telegram_compatible_image(img1_path) or not self.ensure_telegram_compatible_image(img2_path):
             logger.error("❌ Failed to process images for Telegram")
             return False
         
         logger.info("\n🤖 Generating comparison text...")
         comparison_text = self.generate_comparison_text(img1, img2, access_token)
-        logger.info(f"📝 Text: {comparison_text}")
+        logger.info(f" Text: {comparison_text}")
         
         logger.info("\n📤 Publishing to Telegram...")
-        success = self.create_poll(comparison_text, img1_path, img2_path)
+        # Передаем img1 и img2 для сохранения metadata
+        success = self.create_poll(comparison_text, img1_path, img2_path, img1, img2)
         
         return success
 
-# ──────────────────────────── Main ─────────────────────────────────
+# ─────────────────────────── Main ─────────────────────────────────
 
 def main():
     logger.info("🚀 Запуск Image Battle Bot — %s", datetime.now(timezone.utc).isoformat())
