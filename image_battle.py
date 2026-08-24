@@ -175,7 +175,7 @@ class ImageBattleGenerator:
             logger.warning("⚠️ Нет токена GigaChat, используем fallback текст")
             return self._fallback_text(img1, img2)
         
-        prompt = f"""Создай короткое увлекательное сравнение для двух изображений (максимум 2-3 предложения):
+        prompt = f"""Создай короткое увлекательное сравнение для двух изображений (максимум 2-3 предложения на русском языке):
 
 Изображение 1 ({img1['category']}): {img1['description'][:100]}
 Изображение 2 ({img2['category']}): {img2['description'][:100]}
