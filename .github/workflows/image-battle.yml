@@ -1,11 +1,13 @@
-# .github/workflows/image-battle.yml
 name: 🖼️ Image Battle Weekly
+
+# 🔥 ДОБАВЬТЕ ЭТОТ БЛОК: даем права на запись в репозиторий
+permissions:
+  contents: write
 
 on:
   schedule:
-    # Каждую пятницу в 18:00 UTC
-    - cron: '0 18 * * 5'
-  workflow_dispatch:  # Ручной запуск для тестирования
+    - cron: '0 18 * * 5' # Каждую пятницу в 18:00 UTC
+  workflow_dispatch:     # Ручной запуск
 
 jobs:
   image-battle:
@@ -14,6 +16,8 @@ jobs:
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true # Важно для последующего git push
 
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
@@ -34,12 +38,15 @@ jobs:
           NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
         run: python image_battle.py
 
-      - name: 📝 Commit and push if images changed
+      - name: 📝 Commit and push images
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add -A
-          git diff --staged --quiet || git commit -m "📸 New Image Battle: $(date +'%Y-%m-%d')"
-          git push
-        env:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Делаем коммит только если есть изменения
+          if ! git diff --staged --quiet; then
+            git commit -m "📸 New Image Battle: $(date +'%Y-%m-%d')"
+            git push origin HEAD:main
+          else
+            echo "No changes to commit"
+          fi
