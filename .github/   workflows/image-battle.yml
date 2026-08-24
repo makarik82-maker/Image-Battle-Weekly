@@ -32,7 +32,7 @@ jobs:
           UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
           GIGACHAT_API_KEY: ${{ secrets.GIGACHAT_API_KEY }}
           NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
-        run: python scripts/image_battle.py
+        run: python image_battle.py
 
       - name: 📝 Commit and push if images changed
         run: |
