@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 UNSPLASH_ACCESS_KEY = os.environ.get("UNSPLASH_ACCESS_KEY", "")
-GIGACHAT_CREDENTIALS = os.environ.get("GIGACHAT_CREDENTIALS", "")
+# Проверяем оба возможных названия секрета
+GIGACHAT_CREDENTIALS = os.environ.get("GIGACHAT_CREDENTIALS") or os.environ.get("GIGACHAT_API_KEY", "")
 NASA_API_KEY = os.environ.get("NASA_API_KEY", "")
 
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
@@ -32,7 +33,7 @@ VERIFY_SSL = False
 def get_gigachat_token() -> str | None:
     """Получает OAuth-токен GigaChat."""
     if not GIGACHAT_CREDENTIALS:
-        logger.error("❌ GIGACHAT_CREDENTIALS не задан в секретах GitHub!")
+        logger.warning("⚠️ GIGACHAT_CREDENTIALS (или GIGACHAT_API_KEY) не задан. Будет использован fallback-текст.")
         return None
     
     url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
@@ -51,7 +52,7 @@ def get_gigachat_token() -> str | None:
         logger.info("✅ Токен GigaChat успешно получен")
         return token
     except Exception as e:
-        logger.error("❌ Ошибка получения токена GigaChat: %s", e)
+        logger.warning(f"⚠️ Ошибка получения токена GigaChat: {e}. Используем fallback-текст.")
         return None
 
 # ──────────────────────── Image Battle Generator ──────────────────
@@ -114,7 +115,7 @@ class ImageBattleGenerator:
                     }
                     
                 except requests.exceptions.RequestException as e:
-                    logger.warning(f"️ Request error for {query}: {e}")
+                    logger.warning(f"⚠️ Request error for {query}: {e}")
                     if attempt < max_retries - 1:
                         import time
                         time.sleep(2)
@@ -164,7 +165,7 @@ class ImageBattleGenerator:
                 'category': category
             }
         except Exception as e:
-            logger.warning(f"️ Fallback error: {e}")
+            logger.warning(f"⚠️ Fallback error: {e}")
             return None
 
     def generate_comparison_text(self, img1, img2, access_token):
@@ -206,7 +207,6 @@ class ImageBattleGenerator:
             result = response.json()
             answer_text = result["choices"][0]["message"]["content"].strip()
             
-            # Очищаем ответ от markdown-оберток
             if answer_text.startswith("```"):
                 answer_text = answer_text.strip("`").strip()
             
@@ -241,7 +241,7 @@ class ImageBattleGenerator:
             logger.info(f"✅ Downloaded: {filename} ({path.stat().st_size} bytes)")
             return filename
         except Exception as e:
-            logger.error(f" Error downloading {url}: {e}")
+            logger.error(f"❌ Error downloading {url}: {e}")
             return None
 
     def create_poll(self, text, img1_path, img2_path):
@@ -282,12 +282,12 @@ class ImageBattleGenerator:
             # 3. Создаем опрос
             poll_url = f"{TELEGRAM_API}/sendPoll"
             
-            # ВАЖНО: options передаем как список Python, json= сам сериализует
+            # 🔥 ИСПРАВЛЕНО: is_anonymous должен быть True для каналов!
             poll_data = {
                 'chat_id': TELEGRAM_CHAT_ID,
                 'question': '🏆 Какое изображение круче?',
                 'options': ['🔥 Первое!', '❤️ Второе!', '🤝 Оба классные!'],
-                'is_anonymous': False,
+                'is_anonymous': True,  # <-- Ключевое исправление для каналов
                 'allows_multiple_answers': False,
                 'reply_to_message_id': result2['result']['message_id']
             }
@@ -311,11 +311,9 @@ class ImageBattleGenerator:
         """Основной метод запуска"""
         logger.info("🎨 Starting Image Battle generation...")
         
-        # Выбираем случайную пару категорий
         cat1, cat2 = random.choice(self.battle_pairs)
-        logger.info(f"️ Battle: {cat1.upper()} vs {cat2.upper()}")
+        logger.info(f"⚔️ Battle: {cat1.upper()} vs {cat2.upper()}")
         
-        # Получаем изображения с повторными попытками
         logger.info(f"\n📸 Fetching image 1 ({cat1})...")
         img1 = self.get_unsplash_image(cat1)
         
@@ -331,7 +329,7 @@ class ImageBattleGenerator:
         img2 = self.get_unsplash_image(cat2)
         
         if not img2 and cat2 == 'space':
-            logger.info(" Trying NASA API...")
+            logger.info("🔄 Trying NASA API...")
             img2 = self.get_nasa_image()
         
         if not img2:
@@ -339,14 +337,13 @@ class ImageBattleGenerator:
             img2 = self.get_fallback_image(cat2)
         
         if not img1 or not img2:
-            logger.error(f" Failed to fetch images. img1: {img1 is not None}, img2: {img2 is not None}")
+            logger.error(f"❌ Failed to fetch images. img1: {img1 is not None}, img2: {img2 is not None}")
             return False
         
         logger.info(f"\n✅ Images fetched successfully!")
         logger.info(f"📸 Image 1: {img1['description'][:50]}...")
         logger.info(f"📸 Image 2: {img2['description'][:50]}...")
         
-        # Скачиваем изображения
         timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
         img1_path = f"battle_images/{timestamp}_1.jpg"
         img2_path = f"battle_images/{timestamp}_2.jpg"
@@ -358,12 +355,10 @@ class ImageBattleGenerator:
             logger.error("❌ Failed to download images")
             return False
         
-        # Генерируем текст
         logger.info("\n🤖 Generating comparison text...")
         comparison_text = self.generate_comparison_text(img1, img2, access_token)
         logger.info(f"📝 Text: {comparison_text}")
         
-        # Публикуем
         logger.info("\n📤 Publishing to Telegram...")
         success = self.create_poll(comparison_text, img1_path, img2_path)
         
@@ -374,12 +369,8 @@ class ImageBattleGenerator:
 def main():
     logger.info("🚀 Запуск Image Battle Bot — %s", datetime.now(timezone.utc).isoformat())
     
-    # 1. Получаем токен GigaChat
     access_token = get_gigachat_token()
-    if not access_token:
-        logger.warning("⚠️ Продолжаем работу без токена GigaChat (будет использован fallback текст)")
     
-    # 2. Создаем генератор и запускаем
     generator = ImageBattleGenerator()
     success = generator.run(access_token)
     
