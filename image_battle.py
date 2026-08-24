@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 UNSPLASH_ACCESS_KEY = os.environ.get("UNSPLASH_ACCESS_KEY", "")
-# Проверяем оба возможных названия секрета
+# Поддерживаем оба возможных названия секрета
 GIGACHAT_CREDENTIALS = os.environ.get("GIGACHAT_CREDENTIALS") or os.environ.get("GIGACHAT_API_KEY", "")
 NASA_API_KEY = os.environ.get("NASA_API_KEY", "")
 
@@ -263,6 +263,8 @@ class ImageBattleGenerator:
                     'parse_mode': 'Markdown'
                 }
                 response = requests.post(url, data=data, files=files, timeout=30)
+                if not response.ok:
+                    logger.error(f"❌ Telegram API Error (sendPhoto 1): {response.status_code} - {response.text}")
                 response.raise_for_status()
                 result1 = response.json()
             
@@ -276,26 +278,26 @@ class ImageBattleGenerator:
                     'reply_to_message_id': result1['result']['message_id']
                 }
                 response = requests.post(url, data=data, files=files, timeout=30)
+                if not response.ok:
+                    logger.error(f"❌ Telegram API Error (sendPhoto 2): {response.status_code} - {response.text}")
                 response.raise_for_status()
                 result2 = response.json()
             
             # 3. Создаем опрос
             poll_url = f"{TELEGRAM_API}/sendPoll"
             
-            # 🔥 ИСПРАВЛЕНО: is_anonymous должен быть True для каналов!
             poll_data = {
                 'chat_id': TELEGRAM_CHAT_ID,
                 'question': '🏆 Какое изображение круче?',
                 'options': ['🔥 Первое!', '❤️ Второе!', '🤝 Оба классные!'],
-                'is_anonymous': True,  # <-- Ключевое исправление для каналов
+                'is_anonymous': True,  # Обязательно True для каналов
                 'allows_multiple_answers': False,
                 'reply_to_message_id': result2['result']['message_id']
             }
             
             poll_response = requests.post(poll_url, json=poll_data, timeout=10)
-            
             if not poll_response.ok:
-                logger.error(f"❌ Telegram API Error: {poll_response.status_code} - {poll_response.text}")
+                logger.error(f"❌ Telegram API Error (sendPoll): {poll_response.status_code} - {poll_response.text}")
                 poll_response.raise_for_status()
             
             logger.info("✅ Post successfully published!")
