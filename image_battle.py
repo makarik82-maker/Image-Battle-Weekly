@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
+from PIL import Image  # Добавлено для обработки изображений
 
 # Подавляем предупреждения о непроверенных HTTPS-запросах
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -21,7 +22,6 @@ logger = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 UNSPLASH_ACCESS_KEY = os.environ.get("UNSPLASH_ACCESS_KEY", "")
-# Поддерживаем оба возможных названия секрета
 GIGACHAT_CREDENTIALS = os.environ.get("GIGACHAT_CREDENTIALS") or os.environ.get("GIGACHAT_API_KEY", "")
 NASA_API_KEY = os.environ.get("NASA_API_KEY", "")
 
@@ -244,6 +244,27 @@ class ImageBattleGenerator:
             logger.error(f"❌ Error downloading {url}: {e}")
             return None
 
+    def ensure_telegram_compatible_image(self, filepath):
+        """Оптимизирует изображение под требования Telegram (макс. 1920px)"""
+        try:
+            with Image.open(filepath) as img:
+                # Конвертируем в RGB, если есть альфа-канал (PNG)
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                
+                # Telegram допускает до 10000px, но мы ограничим до 1920px для надежности и скорости
+                max_dimension = 1920
+                if img.width > max_dimension or img.height > max_dimension:
+                    img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+                
+                # Сохраняем обратно как JPEG с хорошим качеством
+                img.save(filepath, format="JPEG", quality=90)
+                logger.info(f"✅ Image optimized for Telegram: {filepath} ({img.width}x{img.height})")
+                return True
+        except Exception as e:
+            logger.error(f"❌ Error processing image {filepath}: {e}")
+            return False
+
     def create_poll(self, text, img1_path, img2_path):
         """Создание опроса в Telegram"""
         
@@ -290,7 +311,7 @@ class ImageBattleGenerator:
                 'chat_id': TELEGRAM_CHAT_ID,
                 'question': '🏆 Какое изображение круче?',
                 'options': ['🔥 Первое!', '❤️ Второе!', '🤝 Оба классные!'],
-                'is_anonymous': True,  # Обязательно True для каналов
+                'is_anonymous': True,
                 'allows_multiple_answers': False,
                 'reply_to_message_id': result2['result']['message_id']
             }
@@ -355,6 +376,11 @@ class ImageBattleGenerator:
         
         if not downloaded1 or not downloaded2:
             logger.error("❌ Failed to download images")
+            return False
+        
+        # 🔥 НОВОЕ: Оптимизация изображений под требования Telegram
+        if not self.ensure_telegram_compatible_image(img1_path) or not self.ensure_telegram_compatible_image(img2_path):
+            logger.error("❌ Failed to process images for Telegram")
             return False
         
         logger.info("\n🤖 Generating comparison text...")
