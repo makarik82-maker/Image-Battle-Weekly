@@ -12,7 +12,7 @@ from PIL import Image
 # Подавляем предупреждения о непроверенных HTTPS-запросах
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# ──────────────────────────── Настройки ───────────────────────────
+# ──────────────────────────── Настройки ──────────────────────────
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -40,14 +40,58 @@ class WinnerAnnouncer:
             with open(self.metadata_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             logger.info(f"✅ Загружена битва от {data.get('battle_date', 'неизвестно')}")
-            logger.info(f"⚔️ Категории: {data.get('img1_category', '').upper()} vs {data.get('img2_category', '').upper()}")
+            logger.info(f"️ Категория: {data.get('category_name', 'неизвестно')}")
+            logger.info(f" {data.get('img1_query', '').title()} vs {data.get('img2_query', '').title()}")
             return data
         except Exception as e:
             logger.error(f"❌ Ошибка чтения {self.metadata_file}: {e}")
             return None
 
+    def stop_poll(self, poll_message_id: int) -> dict | None:
+        """Завершает опрос через stopPoll и возвращает финальные результаты"""
+        url = f"{TELEGRAM_API}/stopPoll"
+        
+        payload = {
+            'chat_id': TELEGRAM_CHAT_ID,
+            'message_id': poll_message_id
+        }
+        
+        try:
+            logger.info(f" Завершаю опрос (message_id: {poll_message_id})...")
+            response = requests.post(url, json=payload, timeout=30)
+            
+            if not response.ok:
+                error_data = response.json() if response.text else {}
+                error_desc = error_data.get('description', 'Unknown error')
+                
+                # Если опрос уже закрыт — это не критично, продолжаем
+                if 'poll has been closed' in error_desc.lower() or 'already closed' in error_desc.lower():
+                    logger.info("ℹ️ Опрос уже был закрыт ранее, продолжаем анализ")
+                    return self.get_poll_results(poll_message_id)
+                
+                logger.error(f"❌ Telegram API Error (stopPoll): {response.status_code} - {response.text}")
+                return None
+            
+            result = response.json()
+            if not result.get('ok'):
+                logger.error(f"❌ Ошибка закрытия опроса: {result}")
+                return None
+            
+            poll_data = result['result']
+            total_votes = poll_data.get('total_voter_count', 0)
+            is_closed = poll_data.get('is_closed', False)
+            
+            logger.info(f"✅ Опрос успешно закрыт!")
+            logger.info(f"📊 Статус: {'Закрыт' if is_closed else 'Открыт'} | Всего голосов: {total_votes}")
+            
+            return poll_data
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка закрытия опроса: {e}")
+            return None
+
     def get_poll_results(self, poll_message_id: int) -> dict | None:
-        """Получает результаты опроса через getPoll"""
+        """Получает результаты опроса через getPoll (fallback если stopPoll не сработал)"""
         url = f"{TELEGRAM_API}/getPoll"
         
         payload = {
@@ -56,11 +100,11 @@ class WinnerAnnouncer:
         }
         
         try:
-            logger.info(f"📊 Запрашиваю результаты опроса (message_id: {poll_message_id})...")
+            logger.info(f" Запрашиваю результаты опроса (message_id: {poll_message_id})...")
             response = requests.post(url, json=payload, timeout=30)
             
             if not response.ok:
-                logger.error(f"❌ Telegram API Error: {response.status_code} - {response.text}")
+                logger.error(f"❌ Telegram API Error (getPoll): {response.status_code} - {response.text}")
                 return None
             
             result = response.json()
@@ -80,7 +124,7 @@ class WinnerAnnouncer:
             logger.error(f"❌ Ошибка получения результатов: {e}")
             return None
 
-    def calculate_winner(self, poll_data: dict, img1_category: str, img2_category: str) -> dict:
+    def calculate_winner(self, poll_data: dict, img1_query: str, img2_query: str) -> dict:
         """Анализирует результаты и определяет победителя"""
         total_votes = poll_data.get('total_voter_count', 0)
         options = poll_data.get('options', [])
@@ -105,22 +149,22 @@ class WinnerAnnouncer:
         # Определяем победителя
         if first_votes > second_votes:
             winner = 'first'
-            winner_category = img1_category
-            loser_category = img2_category
+            winner_query = img1_query
+            loser_query = img2_query
         elif second_votes > first_votes:
             winner = 'second'
-            winner_category = img2_category
-            loser_category = img1_category
+            winner_query = img2_query
+            loser_query = img1_query
         else:
             winner = 'tie'
-            winner_category = None
-            loser_category = None
+            winner_query = None
+            loser_query = None
         
         result = {
             'winner': winner,
-            'winner_category': winner_category,
+            'winner_query': winner_query,
             'winner_percent': first_percent if winner == 'first' else second_percent,
-            'loser_category': loser_category,
+            'loser_query': loser_query,
             'loser_percent': second_percent if winner == 'first' else first_percent,
             'total_votes': total_votes,
             'first_votes': first_votes,
@@ -139,8 +183,9 @@ class WinnerAnnouncer:
     def send_winner_announcement(self, result: dict, metadata: dict) -> bool:
         """Отправляет сообщение с итогами битвы"""
         
-        img1_cat = metadata['img1_category'].upper()
-        img2_cat = metadata['img2_category'].upper()
+        img1_query = metadata['img1_query'].title()
+        img2_query = metadata['img2_query'].title()
+        category_name = metadata.get('category_name', 'Битва')
         
         # Формируем текст
         if result['winner'] == 'tie':
@@ -149,26 +194,24 @@ class WinnerAnnouncer:
                 f"🤝 **НИЧЬЯ!**\n\n"
                 f"Оба изображения набрали одинаковое количество голосов!\n\n"
                 f"📊 **Результаты:**\n"
-                f"🔥 {img1_cat}: {result['first_percent']}% ({result['first_votes']} голосов)\n"
-                f"❤️ {img2_cat}: {result['second_percent']}% ({result['second_votes']} голосов)\n"
+                f"🔥 {img1_query}: {result['first_percent']}% ({result['first_votes']} голосов)\n"
+                f"❤️ {img2_query}: {result['second_percent']}% ({result['second_votes']} голосов)\n"
                 f"🤝 Оба классные: {result['both_percent']}% ({result['both_votes']} голосов)\n\n"
                 f"👥 Всего проголосовало: **{result['total_votes']}**\n\n"
                 f"Спасибо за участие! Ждём вас в следующей битве! 🙏"
             )
         else:
-            winner_cat = result['winner_category'].upper()
-            loser_cat = result['loser_category'].upper()
-            winner_pct = result['winner_percent']
-            loser_pct = result['loser_percent']
+            winner_query = result['winner_query'].title()
+            loser_query = result['loser_query'].title()
             
             text = (
                 f" **ИТОГИ БИТВЫ** \n\n"
-                f"🎉 **{winner_cat}** победил **{loser_cat}**!\n\n"
+                f" **{winner_query}** победил **{loser_query}**!\n\n"
                 f"📊 **Результаты:**\n"
-                f"🔥 {img1_cat}: {result['first_percent']}% ({result['first_votes']} голосов)\n"
-                f"❤️ {img2_cat}: {result['second_percent']}% ({result['second_votes']} голосов)\n"
+                f"🔥 {img1_query}: {result['first_percent']}% ({result['first_votes']} голосов)\n"
+                f"❤️ {img2_query}: {result['second_percent']}% ({result['second_votes']} голосов)\n"
                 f"🤝 Оба классные: {result['both_percent']}% ({result['both_votes']} голосов)\n\n"
-                f"👥 Всего проголосовало: **{result['total_votes']}**\n\n"
+                f" Всего проголосовало: **{result['total_votes']}**\n\n"
                 f"Спасибо за ваши голоса! Ждём вас в следующей битве! 💪"
             )
         
@@ -186,7 +229,7 @@ class WinnerAnnouncer:
             url = f"{TELEGRAM_API}/sendPhoto"
             
             if not os.path.exists(winner_photo_path):
-                logger.warning(f"️ Фото победителя {winner_photo_path} не найдено, отправляем только текст")
+                logger.warning(f"⚠️ Фото победителя {winner_photo_path} не найдено, отправляем только текст")
                 return self.send_text_only(text)
             
             with open(winner_photo_path, 'rb') as f:
@@ -219,7 +262,7 @@ class WinnerAnnouncer:
                 files = {'photo': f}
                 data = {
                     'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': f"🔥 {metadata['img1_category'].upper()}\n\n{text}",
+                    'caption': f"🔥 {metadata['img1_query'].title()}\n\n{text}",
                     'parse_mode': 'Markdown'
                 }
                 response = requests.post(url, data=data, files=files, timeout=30)
@@ -231,7 +274,7 @@ class WinnerAnnouncer:
                 files = {'photo': f}
                 data = {
                     'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': f"❤️ {metadata['img2_category'].upper()}",
+                    'caption': f"❤️ {metadata['img2_query'].title()}",
                     'parse_mode': 'Markdown',
                     'reply_to_message_id': result1['result']['message_id']
                 }
@@ -264,36 +307,43 @@ class WinnerAnnouncer:
 
     def run(self) -> bool:
         """Основной метод"""
-        logger.info(" Запуск анализа результатов битвы...")
+        logger.info("🚀 Запуск анализа результатов битвы...")
         
         # 1. Загружаем metadata
         metadata = self.load_battle_metadata()
         if not metadata:
             return False
         
-        # 2. Получаем результаты опроса
+        # 2. Получаем ID опроса
         poll_message_id = metadata.get('poll_message_id')
         if not poll_message_id:
             logger.error("❌ poll_message_id не найден в metadata")
             return False
         
-        poll_data = self.get_poll_results(poll_message_id)
+        # 3. 🔥 ЗАКРЫВАЕМ ОПРОС (stopPoll) — это также возвращает финальные результаты
+        poll_data = self.stop_poll(poll_message_id)
+        
+        # Если stopPoll не сработал, пробуем getPoll как fallback
         if not poll_data:
-            logger.error(" Не удалось получить результаты опроса")
+            logger.warning("⚠️ stopPoll не вернул данные, пробуем getPoll...")
+            poll_data = self.get_poll_results(poll_message_id)
+        
+        if not poll_data:
+            logger.error("❌ Не удалось получить результаты опроса")
             return False
         
-        # 3. Анализируем результаты
+        # 4. Анализируем результаты
         result = self.calculate_winner(
             poll_data,
-            metadata['img1_category'],
-            metadata['img2_category']
+            metadata['img1_query'],
+            metadata['img2_query']
         )
         
         if not result:
             logger.error("❌ Не удалось определить победителя")
             return False
         
-        # 4. Отправляем объявление
+        # 5. Отправляем объявление
         success = self.send_winner_announcement(result, metadata)
         
         return success
