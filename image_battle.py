@@ -28,12 +28,12 @@ NASA_API_KEY = os.environ.get("NASA_API_KEY", "")
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 VERIFY_SSL = False
 
-# ─────────────────────── GigaChat Token ──────────────────────────
+# ────────────────────── Токен GigaChat ─────────────────────────
 
-def get_gigachat_token() -> str | None:
+def получить_токен_gigachat() -> str | None:
     """Получает OAuth-токен GigaChat."""
     if not GIGACHAT_CREDENTIALS:
-        logger.warning("⚠️ GIGACHAT_CREDENTIALS (или GIGACHAT_API_KEY) не задан. Будет использован fallback-текст.")
+        logger.warning("⚠️ GIGACHAT_CREDENTIALS (или GIGACHAT_API_KEY) не задан. Будет использован резервный текст.")
         return None
     
     url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
@@ -48,19 +48,19 @@ def get_gigachat_token() -> str | None:
     try:
         response = requests.post(url, headers=headers, data=data, verify=VERIFY_SSL, timeout=30)
         response.raise_for_status()
-        token = response.json().get("access_token")
+        токен = response.json().get("access_token")
         logger.info("✅ Токен GigaChat успешно получен")
-        return token
+        return токен
     except Exception as e:
-        logger.warning(f"️ Ошибка получения токена GigaChat: {e}. Используем fallback-текст.")
+        logger.warning(f"⚠️ Ошибка получения токена GigaChat: {e}. Используем резервный текст.")
         return None
 
-# ──────────────────────── Image Battle Generator ──────────────────
+# ──────────────────────── Генератор битвы изображений ─────────────
 
-class ImageBattleGenerator:
+class ГенераторБитвы:
     def __init__(self):
         # Теперь это просто список тематик, а не пары
-        self.categories = {
+        self.категории = {
             'space': ['galaxy', 'nebula', 'stars', 'astronomy', 'cosmos'],
             'nature': ['mountain', 'forest', 'ocean', 'waterfall', 'landscape', 'river'],
             'animals': ['tiger', 'lion', 'eagle', 'wolf', 'bear', 'elephant'],
@@ -69,23 +69,23 @@ class ImageBattleGenerator:
         }
         
         # Названия тематик для отображения
-        self.category_names = {
+        self.названия_категорий = {
             'space': '🌌 Космос',
             'nature': '🌿 Природа',
             'animals': '🦁 Животные',
-            'city': '🏙️ Город',
+            'city': '️ Город',
             'abstract': '🎨 Абстракция'
         }
 
-    def get_unsplash_image(self, query, max_retries=3):
+    def получить_изображение_unsplash(self, запрос, макс_попыток=3):
         """Получение случайного изображения с Unsplash по конкретному запросу"""
-        for attempt in range(max_retries):
+        for попытка in range(макс_попыток):
             try:
-                logger.info(f"🔄 Attempt {attempt + 1}/{max_retries} for query: {query}")
+                logger.info(f"🔄 Попытка {попытка + 1}/{макс_попыток} для запроса: {запрос}")
                 
                 url = "https://api.unsplash.com/photos/random"
                 params = {
-                    'query': query,
+                    'query': запрос,
                     'orientation': 'landscape',
                     'client_id': UNSPLASH_ACCESS_KEY
                 }
@@ -93,40 +93,40 @@ class ImageBattleGenerator:
                 response = requests.get(url, params=params, timeout=15)
                 
                 if response.status_code == 429:
-                    logger.warning("️ Rate limit, waiting...")
+                    logger.warning("⚠️ Лимит запросов, ожидание...")
                     import time
                     time.sleep(2)
                     continue
                 
                 response.raise_for_status()
-                data = response.json()
+                данные = response.json()
                 
-                if not data or 'urls' not in data:
-                    logger.warning(f"⚠️ Invalid response data for {query}")
+                if not данные or 'urls' not in данные:
+                    logger.warning(f"⚠️ Неверные данные ответа для {запрос}")
                     continue
                 
                 return {
-                    'url': data['urls']['regular'],
-                    'download_url': data['urls']['full'],
-                    'author': data['user']['name'],
-                    'description': data.get('description') or data.get('alt_description') or query,
-                    'query': query
+                    'url': данные['urls']['regular'],
+                    'download_url': данные['urls']['full'],
+                    'author': данные['user']['name'],
+                    'description': данные.get('description') or данные.get('alt_description') or запрос,
+                    'query': запрос
                 }
                 
             except requests.exceptions.RequestException as e:
-                logger.warning(f"⚠️ Request error for {query}: {e}")
-                if attempt < max_retries - 1:
+                logger.warning(f"⚠️ Ошибка запроса для {запрос}: {e}")
+                if попытка < макс_попыток - 1:
                     import time
                     time.sleep(2)
                     continue
             except Exception as e:
-                logger.warning(f"⚠️ Error for {query}: {e}")
+                logger.warning(f"⚠️ Ошибка для {запрос}: {e}")
                 continue
         
-        logger.error(f"❌ Failed to get image for query: {query}")
+        logger.error(f"❌ Не удалось получить изображение для запроса: {запрос}")
         return None
 
-    def get_nasa_image(self):
+    def получить_изображение_nasa(self):
         """Получение изображения от NASA APOD"""
         try:
             url = "https://api.nasa.gov/planetary/apod"
@@ -134,59 +134,59 @@ class ImageBattleGenerator:
             
             response = requests.get(url, params=params, timeout=15)
             response.raise_for_status()
-            data = response.json()
+            данные = response.json()
             
-            if data['media_type'] == 'image':
+            if данные['media_type'] == 'image':
                 return {
-                    'url': data['url'],
-                    'download_url': data['url'],
+                    'url': данные['url'],
+                    'download_url': данные['url'],
                     'author': 'NASA',
-                    'description': data.get('explanation', 'NASA Astronomy Picture of the Day'),
+                    'description': данные.get('explanation', 'NASA Астрономическое изображение дня'),
                     'query': 'space'
                 }
         except Exception as e:
-            logger.warning(f"️ NASA API error: {e}")
+            logger.warning(f"⚠️ Ошибка NASA API: {e}")
         
         return None
 
-    def get_fallback_image(self, query):
-        """Fallback изображения через picsum.photos"""
+    def получить_резервное_изображение(self, запрос):
+        """Резервное изображение через picsum.photos"""
         try:
-            width, height = 1080, 720
-            seed = f"{query}-{random.randint(1, 1000)}"
-            url = f"https://picsum.photos/seed/{seed}/{width}/{height}"
+            ширина, высота = 1080, 720
+            сид = f"{запрос}-{random.randint(1, 1000)}"
+            url = f"https://picsum.photos/seed/{сид}/{ширина}/{высота}"
             
             return {
                 'url': url,
                 'download_url': url,
                 'author': 'Picsum',
-                'description': f'Random {query} image',
-                'query': query
+                'description': f'Случайное изображение {запрос}',
+                'query': запрос
             }
         except Exception as e:
-            logger.warning(f"⚠️ Fallback error: {e}")
+            logger.warning(f"⚠️ Ошибка резервного метода: {e}")
             return None
 
-    def generate_comparison_text(self, img1, img2, category, access_token):
+    def сгенерировать_текст_сравнения(self, img1, img2, категория, токен_доступа):
         """Генерация сравнительного текста через GigaChat"""
         
-        if not access_token:
-            logger.warning("⚠️ Нет токена GigaChat, используем fallback текст")
-            return self._fallback_text(img1, img2, category)
+        if not токен_доступа:
+            logger.warning("⚠️ Нет токена GigaChat, используем резервный текст")
+            return self._резервный_текст(img1, img2, категория)
         
-        prompt = f"""Создай короткое увлекательное сравнение для двух изображений из одной тематики "{category}" (максимум 2-3 предложения):
+        prompt = f"""Создай короткое увлекательное сравнение для двух изображений из одной тематики "{категория}" (максимум 2-3 предложения):
 
 Изображение 1 ({img1['query']}): {img1['description'][:100]}
 Изображение 2 ({img2['query']}): {img2['description'][:100]}
 
-Стиль: дружелюбный, вовлекающий, с эмодзи, можно с коротким интересным фактом на тему изображений. Заверши призывом к голосованию.
+Стиль: дружелюбный, вовлекающий, с эмодзи. Заверши призывом к голосованию.
 Ответь ТОЛЬКО текстом сравнения без дополнительных пояснений."""
 
         url = "https://api.giga.chat/v1/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Authorization": f"Bearer {access_token}",
+            "Authorization": f"Bearer {токен_доступа}",
         }
         
         payload = {
@@ -203,254 +203,254 @@ class ImageBattleGenerator:
             response = requests.post(url, headers=headers, json=payload, verify=VERIFY_SSL, timeout=30)
             response.raise_for_status()
             
-            result = response.json()
-            answer_text = result["choices"][0]["message"]["content"].strip()
+            результат = response.json()
+            текст_ответа = результат["choices"][0]["message"]["content"].strip()
             
-            if answer_text.startswith("```"):
-                answer_text = answer_text.strip("`").strip()
+            if текст_ответа.startswith("```"):
+                текст_ответа = текст_ответа.strip("`").strip()
             
             logger.info("✅ Текст сгенерирован через GigaChat")
-            return answer_text
+            return текст_ответа
             
         except Exception as e:
-            logger.warning(f"⚠️ GigaChat error: {e}, используем fallback")
-            return self._fallback_text(img1, img2, category)
+            logger.warning(f"⚠️ Ошибка GigaChat: {e}, используем резервный текст")
+            return self._резервный_текст(img1, img2, категория)
 
-    def _fallback_text(self, img1, img2, category):
-        """Fallback текст если GigaChat недоступен"""
-        return f"🔥 Битва в категории {self.category_names.get(category, category)}!\n\n{img1['query'].title()} vs {img2['query'].title()} — что выбираете вы? ✨\n\nГолосуйте! 👇"
+    def _резервный_текст(self, img1, img2, категория):
+        """Резервный текст если GigaChat недоступен"""
+        return f"🔥 Битва в категории {self.названия_категорий.get(категория, категория)}!\n\n{img1['query'].title()} vs {img2['query'].title()} — что выбираете вы? ✨\n\nГолосуйте! "
 
-    def download_image(self, url, filename):
+    def скачать_изображение(self, url, имя_файла):
         """Скачивание изображения"""
         try:
-            logger.info(f"📥 Downloading: {filename}")
+            logger.info(f"📥 Скачиваю: {имя_файла}")
             response = requests.get(url, timeout=30)
             response.raise_for_status()
             
-            path = Path(filename)
-            path.parent.mkdir(parents=True, exist_ok=True)
+            путь = Path(имя_файла)
+            путь.parent.mkdir(parents=True, exist_ok=True)
             
-            with open(filename, 'wb') as f:
+            with open(имя_файла, 'wb') as f:
                 f.write(response.content)
             
-            if path.stat().st_size == 0:
-                logger.warning(f"️ Downloaded file is empty: {filename}")
+            if путь.stat().st_size == 0:
+                logger.warning(f"️ Скачанный файл пуст: {имя_файла}")
                 return None
             
-            logger.info(f"✅ Downloaded: {filename} ({path.stat().st_size} bytes)")
-            return filename
+            logger.info(f"✅ Скачано: {имя_файла} ({путь.stat().st_size} байт)")
+            return имя_файла
         except Exception as e:
-            logger.error(f"❌ Error downloading {url}: {e}")
+            logger.error(f"❌ Ошибка скачивания {url}: {e}")
             return None
 
-    def ensure_telegram_compatible_image(self, filepath):
+    def оптимизировать_для_telegram(self, путь_к_файлу):
         """Оптимизирует изображение под требования Telegram (макс. 1920px)"""
         try:
-            with Image.open(filepath) as img:
+            with Image.open(путь_к_файлу) as img:
                 if img.mode in ("RGBA", "P"):
                     img = img.convert("RGB")
                 
-                max_dimension = 1920
-                if img.width > max_dimension or img.height > max_dimension:
-                    img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+                макс_размер = 1920
+                if img.width > макс_размер or img.height > макс_размер:
+                    img.thumbnail((макс_размер, макс_размер), Image.Resampling.LANCZOS)
                 
-                img.save(filepath, format="JPEG", quality=90)
-                logger.info(f"✅ Image optimized for Telegram: {filepath} ({img.width}x{img.height})")
+                img.save(путь_к_файлу, format="JPEG", quality=90)
+                logger.info(f"✅ Изображение оптимизировано для Telegram: {путь_к_файлу} ({img.width}x{img.height})")
                 return True
         except Exception as e:
-            logger.error(f"❌ Error processing image {filepath}: {e}")
+            logger.error(f"❌ Ошибка обработки изображения {путь_к_файлу}: {e}")
             return False
 
-    def save_battle_metadata(self, poll_message_id, category, img1_query, img2_query, 
-                            img1_path, img2_path, comparison_text):
+    def сохранить_метаданные(self, id_опроса, категория, запрос1, запрос2, 
+                            путь1, путь2, текст_сравнения):
         """Сохраняет информацию о битве для последующего анализа"""
-        metadata = {
-            'poll_message_id': poll_message_id,
+        метаданные = {
+            'poll_message_id': id_опроса,
             'chat_id': TELEGRAM_CHAT_ID,
-            'category': category,
-            'category_name': self.category_names.get(category, category),
-            'img1_query': img1_query,
-            'img2_query': img2_query,
-            'img1_path': img1_path,
-            'img2_path': img2_path,
-            'comparison_text': comparison_text,
+            'category': категория,
+            'category_name': self.названия_категорий.get(категория, категория),
+            'img1_query': запрос1,
+            'img2_query': запрос2,
+            'img1_path': путь1,
+            'img2_path': путь2,
+            'comparison_text': текст_сравнения,
             'created_at': datetime.now(timezone.utc).isoformat(),
             'battle_date': datetime.now(timezone.utc).strftime('%Y-%m-%d')
         }
         
-        metadata_file = 'last_battle.json'
-        with open(metadata_file, 'w', encoding='utf-8') as f:
-            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        файл_метаданных = 'last_battle.json'
+        with open(файл_метаданных, 'w', encoding='utf-8') as f:
+            json.dump(метаданные, f, indent=2, ensure_ascii=False)
         
-        logger.info(f"💾 Battle metadata saved to {metadata_file}")
+        logger.info(f"💾 Метаданные битвы сохранены в {файл_метаданных}")
 
-    def create_poll(self, text, img1_path, img2_path, img1_query, img2_query, category):
-        """Создание опроса в Telegram с сохранением metadata"""
+    def создать_опрос(self, текст, путь1, путь2, запрос1, запрос2, категория):
+        """Создание опроса в Telegram с сохранением метаданных"""
         
-        if not os.path.exists(img1_path) or not os.path.exists(img2_path):
-            logger.error("❌ Image files not found!")
+        if not os.path.exists(путь1) or not os.path.exists(путь2):
+            logger.error("❌ Файлы изображений не найдены!")
             return False
         
         try:
             # 1. Отправляем первое фото
             url = f"{TELEGRAM_API}/sendPhoto"
             
-            with open(img1_path, 'rb') as f:
+            with open(путь1, 'rb') as f:
                 files = {'photo': f}
                 data = {
                     'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': f"🔥 {img1_query.title()}\n\n{text}\n\n❤️ {img2_query.title()} ниже 👇",
+                    'caption': f"🔥 {запрос1.title()}\n\n{текст}\n\n❤️ {запрос2.title()} ниже 👇",
                     'parse_mode': 'Markdown'
                 }
                 response = requests.post(url, data=data, files=files, timeout=30)
                 if not response.ok:
-                    logger.error(f"❌ Telegram API Error (sendPhoto 1): {response.status_code} - {response.text}")
+                    logger.error(f"❌ Ошибка Telegram API (sendPhoto 1): {response.status_code} - {response.text}")
                 response.raise_for_status()
-                result1 = response.json()
+                результат1 = response.json()
             
             # 2. Отправляем второе фото
-            with open(img2_path, 'rb') as f:
+            with open(путь2, 'rb') as f:
                 files = {'photo': f}
                 data = {
                     'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': f"❤️ {img2_query.title()}",
+                    'caption': f"❤️ {запрос2.title()}",
                     'parse_mode': 'Markdown',
-                    'reply_to_message_id': result1['result']['message_id']
+                    'reply_to_message_id': результат1['result']['message_id']
                 }
                 response = requests.post(url, data=data, files=files, timeout=30)
                 if not response.ok:
-                    logger.error(f"❌ Telegram API Error (sendPhoto 2): {response.status_code} - {response.text}")
+                    logger.error(f"❌ Ошибка Telegram API (sendPhoto 2): {response.status_code} - {response.text}")
                 response.raise_for_status()
-                result2 = response.json()
+                результат2 = response.json()
             
             # 3. Создаем опрос с конкретными названиями
-            poll_url = f"{TELEGRAM_API}/sendPoll"
+            url_опроса = f"{TELEGRAM_API}/sendPoll"
             
-            poll_data = {
+            данные_опроса = {
                 'chat_id': TELEGRAM_CHAT_ID,
-                'question': f'🏆 {img1_query.title()} vs {img2_query.title()} — что круче?',
-                'options': [f'🔥 {img1_query.title()}!', f'❤️ {img2_query.title()}!', '🤝 Оба классные!'],
+                'question': f'🏆 {запрос1.title()} vs {запрос2.title()} — что круче?',
+                'options': [f'🔥 {запрос1.title()}!', f'❤️ {запрос2.title()}!', '🤝 Оба классные!'],
                 'is_anonymous': True,
                 'allows_multiple_answers': False,
-                'reply_to_message_id': result2['result']['message_id']
+                'reply_to_message_id': результат2['result']['message_id']
             }
             
-            poll_response = requests.post(poll_url, json=poll_data, timeout=10)
-            if not poll_response.ok:
-                logger.error(f"❌ Telegram API Error (sendPoll): {poll_response.status_code} - {poll_response.text}")
-                poll_response.raise_for_status()
+            response_опроса = requests.post(url_опроса, json=данные_опроса, timeout=10)
+            if not response_опроса.ok:
+                logger.error(f"❌ Ошибка Telegram API (sendPoll): {response_опроса.status_code} - {response_опроса.text}")
+                response_опроса.raise_for_status()
             
-            poll_result = poll_response.json()
-            poll_message_id = poll_result['result']['message_id']
+            результат_опроса = response_опроса.json()
+            id_опроса = результат_опроса['result']['message_id']
             
-            logger.info("✅ Post successfully published!")
+            logger.info("✅ Пост успешно опубликован!")
             
-            # Сохраняем metadata для будущего анализа
-            self.save_battle_metadata(
-                poll_message_id=poll_message_id,
-                category=category,
-                img1_query=img1_query,
-                img2_query=img2_query,
-                img1_path=img1_path,
-                img2_path=img2_path,
-                comparison_text=text
+            # Сохраняем метаданные для будущего анализа
+            self.сохранить_метаданные(
+                id_опроса=id_опроса,
+                category=категория,
+                запрос1=запрос1,
+                запрос2=запрос2,
+                путь1=путь1,
+                путь2=путь2,
+                текст_сравнения=текст
             )
             
             return True
             
         except Exception as e:
-            logger.error(f"❌ Error posting to Telegram: {e}")
+            logger.error(f"❌ Ошибка публикации в Telegram: {e}")
             import traceback
             traceback.print_exc()
             return False
 
-    def run(self, access_token):
+    def запустить(self, токен_доступа):
         """Основной метод запуска"""
-        logger.info("🎨 Starting Image Battle generation...")
+        logger.info("🎨 Запуск генерации битвы изображений...")
         
         # Выбираем одну категорию
-        category = random.choice(list(self.categories.keys()))
-        queries = self.categories[category]
+        категория = random.choice(list(self.категории.keys()))
+        запросы = self.категории[категория]
         
         # Выбираем два разных запроса из одной категории
-        if len(queries) < 2:
-            logger.error(f"❌ Недостаточно запросов в категории {category}")
+        if len(запросы) < 2:
+            logger.error(f" Недостаточно запросов в категории {категория}")
             return False
         
-        query1, query2 = random.sample(queries, 2)
+        запрос1, запрос2 = random.sample(запросы, 2)
         
-        logger.info(f"️ Battle: {self.category_names.get(category, category)}")
-        logger.info(f" {query1.title()} vs {query2.title()}")
+        logger.info(f"⚔️ Битва: {self.названия_категорий.get(категория, категория)}")
+        logger.info(f"🆚 {запрос1.title()} vs {запрос2.title()}")
         
         # Получаем первое изображение
-        logger.info(f"\n📸 Fetching image 1 ({query1})...")
-        img1 = self.get_unsplash_image(query1)
+        logger.info(f"\n📸 Получаю изображение 1 ({запрос1})...")
+        img1 = self.получить_изображение_unsplash(запрос1)
         
-        if not img1 and category == 'space':
-            logger.info("🔄 Trying NASA API...")
-            img1 = self.get_nasa_image()
+        if not img1 and категория == 'space':
+            logger.info("🔄 Пробую NASA API...")
+            img1 = self.получить_изображение_nasa()
         
         if not img1:
-            logger.info(" Trying fallback service...")
-            img1 = self.get_fallback_image(query1)
+            logger.info("🔄 Пробую резервный сервис...")
+            img1 = self.получить_резервное_изображение(запрос1)
         
         # Получаем второе изображение
-        logger.info(f"\n Fetching image 2 ({query2})...")
-        img2 = self.get_unsplash_image(query2)
+        logger.info(f"\n📸 Получаю изображение 2 ({запрос2})...")
+        img2 = self.получить_изображение_unsplash(запрос2)
         
-        if not img2 and category == 'space':
-            logger.info("🔄 Trying NASA API...")
-            img2 = self.get_nasa_image()
+        if not img2 and категория == 'space':
+            logger.info("🔄 Пробую NASA API...")
+            img2 = self.получить_изображение_nasa()
         
         if not img2:
-            logger.info("🔄 Trying fallback service...")
-            img2 = self.get_fallback_image(query2)
+            logger.info("🔄 Пробую резервный сервис...")
+            img2 = self.получить_резервное_изображение(запрос2)
         
         if not img1 or not img2:
-            logger.error(f"❌ Failed to fetch images. img1: {img1 is not None}, img2: {img2 is not None}")
+            logger.error(f"❌ Не удалось получить изображения. img1: {img1 is not None}, img2: {img2 is not None}")
             return False
         
-        logger.info(f"\n✅ Images fetched successfully!")
-        logger.info(f"📸 Image 1 ({query1}): {img1['description'][:50]}...")
-        logger.info(f"📸 Image 2 ({query2}): {img2['description'][:50]}...")
+        logger.info(f"\n✅ Изображения успешно получены!")
+        logger.info(f"📸 Изображение 1 ({запрос1}): {img1['description'][:50]}...")
+        logger.info(f"📸 Изображение 2 ({запрос2}): {img2['description'][:50]}...")
         
-        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
-        img1_path = f"battle_images/{timestamp}_1.jpg"
-        img2_path = f"battle_images/{timestamp}_2.jpg"
+        временная_метка = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+        путь1 = f"battle_images/{временная_метка}_1.jpg"
+        путь2 = f"battle_images/{временная_метка}_2.jpg"
         
-        downloaded1 = self.download_image(img1['download_url'], img1_path)
-        downloaded2 = self.download_image(img2['download_url'], img2_path)
+        скачано1 = self.скачать_изображение(img1['download_url'], путь1)
+        скачано2 = self.скачать_изображение(img2['download_url'], путь2)
         
-        if not downloaded1 or not downloaded2:
-            logger.error("❌ Failed to download images")
+        if not скачано1 or not скачано2:
+            logger.error("❌ Не удалось скачать изображения")
             return False
         
         # Оптимизация изображений под требования Telegram
-        if not self.ensure_telegram_compatible_image(img1_path) or not self.ensure_telegram_compatible_image(img2_path):
-            logger.error("❌ Failed to process images for Telegram")
+        if not self.оптимизировать_для_telegram(путь1) or not self.оптимизировать_для_telegram(путь2):
+            logger.error("❌ Не удалось обработать изображения для Telegram")
             return False
         
-        logger.info("\n🤖 Generating comparison text...")
-        comparison_text = self.generate_comparison_text(img1, img2, category, access_token)
-        logger.info(f" Text: {comparison_text}")
+        logger.info("\n🤖 Генерирую текст сравнения...")
+        текст_сравнения = self.сгенерировать_текст_сравнения(img1, img2, категория, токен_доступа)
+        logger.info(f" Текст: {текст_сравнения}")
         
-        logger.info("\n📤 Publishing to Telegram...")
-        success = self.create_poll(comparison_text, img1_path, img2_path, query1, query2, category)
+        logger.info("\n📤 Публикую в Telegram...")
+        успех = self.создать_опрос(текст_сравнения, путь1, путь2, запрос1, запрос2, категория)
         
-        return success
+        return успех
 
-# ──────────────────────────── Main ─────────────────────────────────
+# ──────────────────────────── Главная функция ────────────────────
 
 def main():
-    logger.info("🚀 Запуск Image Battle Bot — %s", datetime.now(timezone.utc).isoformat())
+    logger.info("🚀 Запуск бота битвы изображений — %s", datetime.now(timezone.utc).isoformat())
     
-    access_token = get_gigachat_token()
+    токен_доступа = получить_токен_gigachat()
     
-    generator = ImageBattleGenerator()
-    success = generator.run(access_token)
+    генератор = ГенераторБитвы()
+    успех = генератор.запустить(токен_доступа)
     
-    if success:
-        logger.info(" Миссия выполнена успешно!")
+    if успех:
+        logger.info("🎉 Миссия выполнена успешно!")
         sys.exit(0)
     else:
         logger.error("🛑 Завершение работы с ошибкой.")
