@@ -52,79 +52,78 @@ def get_gigachat_token() -> str | None:
         logger.info("✅ Токен GigaChat успешно получен")
         return token
     except Exception as e:
-        logger.warning(f"⚠️ Ошибка получения токена GigaChat: {e}. Используем fallback-текст.")
+        logger.warning(f"️ Ошибка получения токена GigaChat: {e}. Используем fallback-текст.")
         return None
 
 # ──────────────────────── Image Battle Generator ──────────────────
 
 class ImageBattleGenerator:
     def __init__(self):
+        # Теперь это просто список тематик, а не пары
         self.categories = {
-            'space': ['space', 'galaxy', 'stars', 'nebula', 'astronomy'],
-            'nature': ['mountain', 'forest', 'ocean', 'waterfall', 'landscape'],
-            'animals': ['tiger', 'lion', 'eagle', 'wolf', 'wildlife'],
-            'city': ['cityscape', 'architecture', 'urban', 'skyline', 'building'],
-            'abstract': ['abstract', 'patterns', 'colors', 'art', 'design']
+            'space': ['galaxy', 'nebula', 'stars', 'astronomy', 'cosmos'],
+            'nature': ['mountain', 'forest', 'ocean', 'waterfall', 'landscape', 'river'],
+            'animals': ['tiger', 'lion', 'eagle', 'wolf', 'bear', 'elephant'],
+            'city': ['cityscape', 'architecture', 'urban', 'skyline', 'building', 'street'],
+            'abstract': ['abstract', 'patterns', 'colors', 'art', 'design', 'geometric']
         }
         
-        self.battle_pairs = [
-            ('space', 'nature'),
-            ('animals', 'city'),
-            ('nature', 'abstract'),
-            ('space', 'animals'),
-            ('city', 'nature')
-        ]
+        # Названия тематик для отображения
+        self.category_names = {
+            'space': '🌌 Космос',
+            'nature': '🌿 Природа',
+            'animals': '🦁 Животные',
+            'city': '🏙️ Город',
+            'abstract': '🎨 Абстракция'
+        }
 
-    def get_unsplash_image(self, category, max_retries=3):
-        """Получение случайного изображения с Unsplash с повторными попытками"""
-        queries = self.categories.get(category, [category])
-        
+    def get_unsplash_image(self, query, max_retries=3):
+        """Получение случайного изображения с Unsplash по конкретному запросу"""
         for attempt in range(max_retries):
-            for query in queries:
-                try:
-                    logger.info(f"🔄 Attempt {attempt + 1}/{max_retries} for {category}: {query}")
-                    
-                    url = "https://api.unsplash.com/photos/random"
-                    params = {
-                        'query': query,
-                        'orientation': 'landscape',
-                        'client_id': UNSPLASH_ACCESS_KEY
-                    }
-                    
-                    response = requests.get(url, params=params, timeout=15)
-                    
-                    if response.status_code == 429:
-                        logger.warning("⚠️ Rate limit, waiting...")
-                        import time
-                        time.sleep(2)
-                        continue
-                    
-                    response.raise_for_status()
-                    data = response.json()
-                    
-                    if not data or 'urls' not in data:
-                        logger.warning(f"⚠️ Invalid response data for {query}")
-                        continue
-                    
-                    return {
-                        'url': data['urls']['regular'],
-                        'download_url': data['urls']['full'],
-                        'author': data['user']['name'],
-                        'description': data.get('description') or data.get('alt_description') or query,
-                        'category': category
-                    }
-                    
-                except requests.exceptions.RequestException as e:
-                    logger.warning(f"⚠️ Request error for {query}: {e}")
-                    if attempt < max_retries - 1:
-                        import time
-                        time.sleep(2)
-                        continue
-                except Exception as e:
-                    logger.warning(f"⚠️ Error for {query}: {e}")
+            try:
+                logger.info(f"🔄 Attempt {attempt + 1}/{max_retries} for query: {query}")
+                
+                url = "https://api.unsplash.com/photos/random"
+                params = {
+                    'query': query,
+                    'orientation': 'landscape',
+                    'client_id': UNSPLASH_ACCESS_KEY
+                }
+                
+                response = requests.get(url, params=params, timeout=15)
+                
+                if response.status_code == 429:
+                    logger.warning("️ Rate limit, waiting...")
+                    import time
+                    time.sleep(2)
                     continue
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                if not data or 'urls' not in data:
+                    logger.warning(f"⚠️ Invalid response data for {query}")
+                    continue
+                
+                return {
+                    'url': data['urls']['regular'],
+                    'download_url': data['urls']['full'],
+                    'author': data['user']['name'],
+                    'description': data.get('description') or data.get('alt_description') or query,
+                    'query': query
+                }
+                
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"⚠️ Request error for {query}: {e}")
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(2)
+                    continue
+            except Exception as e:
+                logger.warning(f"⚠️ Error for {query}: {e}")
+                continue
         
-        logger.error(f"❌ Failed to get image for category: {category}")
+        logger.error(f"❌ Failed to get image for query: {query}")
         return None
 
     def get_nasa_image(self):
@@ -143,44 +142,44 @@ class ImageBattleGenerator:
                     'download_url': data['url'],
                     'author': 'NASA',
                     'description': data.get('explanation', 'NASA Astronomy Picture of the Day'),
-                    'category': 'space'
+                    'query': 'space'
                 }
         except Exception as e:
-            logger.warning(f"⚠️ NASA API error: {e}")
+            logger.warning(f"️ NASA API error: {e}")
         
         return None
 
-    def get_fallback_image(self, category):
+    def get_fallback_image(self, query):
         """Fallback изображения через picsum.photos"""
         try:
             width, height = 1080, 720
-            seed = f"{category}-{random.randint(1, 1000)}"
+            seed = f"{query}-{random.randint(1, 1000)}"
             url = f"https://picsum.photos/seed/{seed}/{width}/{height}"
             
             return {
                 'url': url,
                 'download_url': url,
                 'author': 'Picsum',
-                'description': f'Random {category} image',
-                'category': category
+                'description': f'Random {query} image',
+                'query': query
             }
         except Exception as e:
-            logger.warning(f"️ Fallback error: {e}")
+            logger.warning(f"⚠️ Fallback error: {e}")
             return None
 
-    def generate_comparison_text(self, img1, img2, access_token):
+    def generate_comparison_text(self, img1, img2, category, access_token):
         """Генерация сравнительного текста через GigaChat"""
         
         if not access_token:
             logger.warning("⚠️ Нет токена GigaChat, используем fallback текст")
-            return self._fallback_text(img1, img2)
+            return self._fallback_text(img1, img2, category)
         
-        prompt = f"""Создай короткое увлекательное сравнение для двух изображений (максимум 2-3 предложения на русском языке):
+        prompt = f"""Создай короткое увлекательное сравнение для двух изображений из одной тематики "{category}" (максимум 2-3 предложения):
 
-Изображение 1 ({img1['category']}): {img1['description'][:100]}
-Изображение 2 ({img2['category']}): {img2['description'][:100]}
+Изображение 1 ({img1['query']}): {img1['description'][:100]}
+Изображение 2 ({img2['query']}): {img2['description'][:100]}
 
-Стиль: дружелюбный, вовлекающий, с эмодзи. Заверши призывом к голосованию.
+Стиль: дружелюбный, вовлекающий, с эмодзи, можно с коротким интересным фактом на тему изображений. Заверши призывом к голосованию.
 Ответь ТОЛЬКО текстом сравнения без дополнительных пояснений."""
 
         url = "https://api.giga.chat/v1/chat/completions"
@@ -215,11 +214,11 @@ class ImageBattleGenerator:
             
         except Exception as e:
             logger.warning(f"⚠️ GigaChat error: {e}, используем fallback")
-            return self._fallback_text(img1, img2)
+            return self._fallback_text(img1, img2, category)
 
-    def _fallback_text(self, img1, img2):
+    def _fallback_text(self, img1, img2, category):
         """Fallback текст если GigaChat недоступен"""
-        return f"🔥 Битва: {img1['category'].upper()} vs {img2['category'].upper()}! ✨\n\nГолосуйте за лучшее изображение! 👇"
+        return f"🔥 Битва в категории {self.category_names.get(category, category)}!\n\n{img1['query'].title()} vs {img2['query'].title()} — что выбираете вы? ✨\n\nГолосуйте! 👇"
 
     def download_image(self, url, filename):
         """Скачивание изображения"""
@@ -262,14 +261,16 @@ class ImageBattleGenerator:
             logger.error(f"❌ Error processing image {filepath}: {e}")
             return False
 
-    def save_battle_metadata(self, poll_message_id, img1_category, img2_category, 
+    def save_battle_metadata(self, poll_message_id, category, img1_query, img2_query, 
                             img1_path, img2_path, comparison_text):
         """Сохраняет информацию о битве для последующего анализа"""
         metadata = {
             'poll_message_id': poll_message_id,
             'chat_id': TELEGRAM_CHAT_ID,
-            'img1_category': img1_category,
-            'img2_category': img2_category,
+            'category': category,
+            'category_name': self.category_names.get(category, category),
+            'img1_query': img1_query,
+            'img2_query': img2_query,
             'img1_path': img1_path,
             'img2_path': img2_path,
             'comparison_text': comparison_text,
@@ -283,7 +284,7 @@ class ImageBattleGenerator:
         
         logger.info(f"💾 Battle metadata saved to {metadata_file}")
 
-    def create_poll(self, text, img1_path, img2_path, img1_data, img2_data):
+    def create_poll(self, text, img1_path, img2_path, img1_query, img2_query, category):
         """Создание опроса в Telegram с сохранением metadata"""
         
         if not os.path.exists(img1_path) or not os.path.exists(img2_path):
@@ -298,7 +299,7 @@ class ImageBattleGenerator:
                 files = {'photo': f}
                 data = {
                     'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': f" ВАРИАНТ 1\n\n{text}\n\n❤️ ВАРИАНТ 2 ниже 👇",
+                    'caption': f"🔥 {img1_query.title()}\n\n{text}\n\n❤️ {img2_query.title()} ниже 👇",
                     'parse_mode': 'Markdown'
                 }
                 response = requests.post(url, data=data, files=files, timeout=30)
@@ -312,7 +313,7 @@ class ImageBattleGenerator:
                 files = {'photo': f}
                 data = {
                     'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': '❤️ ВАРИАНТ 2',
+                    'caption': f"❤️ {img2_query.title()}",
                     'parse_mode': 'Markdown',
                     'reply_to_message_id': result1['result']['message_id']
                 }
@@ -322,13 +323,13 @@ class ImageBattleGenerator:
                 response.raise_for_status()
                 result2 = response.json()
             
-            # 3. Создаем опрос
+            # 3. Создаем опрос с конкретными названиями
             poll_url = f"{TELEGRAM_API}/sendPoll"
             
             poll_data = {
                 'chat_id': TELEGRAM_CHAT_ID,
-                'question': '🏆 Какое изображение круче?',
-                'options': ['🔥 Первое!', '❤️ Второе!', '🤝 Оба классные!'],
+                'question': f'🏆 {img1_query.title()} vs {img2_query.title()} — что круче?',
+                'options': [f'🔥 {img1_query.title()}!', f'❤️ {img2_query.title()}!', '🤝 Оба классные!'],
                 'is_anonymous': True,
                 'allows_multiple_answers': False,
                 'reply_to_message_id': result2['result']['message_id']
@@ -347,8 +348,9 @@ class ImageBattleGenerator:
             # Сохраняем metadata для будущего анализа
             self.save_battle_metadata(
                 poll_message_id=poll_message_id,
-                img1_category=img1_data['category'],
-                img2_category=img2_data['category'],
+                category=category,
+                img1_query=img1_query,
+                img2_query=img2_query,
                 img1_path=img1_path,
                 img2_path=img2_path,
                 comparison_text=text
@@ -366,38 +368,51 @@ class ImageBattleGenerator:
         """Основной метод запуска"""
         logger.info("🎨 Starting Image Battle generation...")
         
-        cat1, cat2 = random.choice(self.battle_pairs)
-        logger.info(f"⚔️ Battle: {cat1.upper()} vs {cat2.upper()}")
+        # Выбираем одну категорию
+        category = random.choice(list(self.categories.keys()))
+        queries = self.categories[category]
         
-        logger.info(f"\n Fetching image 1 ({cat1})...")
-        img1 = self.get_unsplash_image(cat1)
+        # Выбираем два разных запроса из одной категории
+        if len(queries) < 2:
+            logger.error(f"❌ Недостаточно запросов в категории {category}")
+            return False
         
-        if not img1 and cat1 == 'space':
+        query1, query2 = random.sample(queries, 2)
+        
+        logger.info(f"️ Battle: {self.category_names.get(category, category)}")
+        logger.info(f" {query1.title()} vs {query2.title()}")
+        
+        # Получаем первое изображение
+        logger.info(f"\n📸 Fetching image 1 ({query1})...")
+        img1 = self.get_unsplash_image(query1)
+        
+        if not img1 and category == 'space':
             logger.info("🔄 Trying NASA API...")
             img1 = self.get_nasa_image()
         
         if not img1:
-            logger.info("🔄 Trying fallback service...")
-            img1 = self.get_fallback_image(cat1)
+            logger.info(" Trying fallback service...")
+            img1 = self.get_fallback_image(query1)
         
-        logger.info(f"\n📸 Fetching image 2 ({cat2})...")
-        img2 = self.get_unsplash_image(cat2)
+        # Получаем второе изображение
+        logger.info(f"\n Fetching image 2 ({query2})...")
+        img2 = self.get_unsplash_image(query2)
         
-        if not img2 and cat2 == 'space':
+        if not img2 and category == 'space':
             logger.info("🔄 Trying NASA API...")
             img2 = self.get_nasa_image()
         
         if not img2:
             logger.info("🔄 Trying fallback service...")
-            img2 = self.get_fallback_image(cat2)
+            img2 = self.get_fallback_image(query2)
         
         if not img1 or not img2:
             logger.error(f"❌ Failed to fetch images. img1: {img1 is not None}, img2: {img2 is not None}")
             return False
         
         logger.info(f"\n✅ Images fetched successfully!")
-        logger.info(f"📸 Image 1: {img1['description'][:50]}...")
-        logger.info(f"📸 Image 2: {img2['description'][:50]}...")
+        logger.info(f"📸 Image 1 ({query1}): {img1['description'][:50]}...")
+        logger.info(f"📸 Image 2 ({query2}): {img2['description'][:50]}...")
         
         timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
         img1_path = f"battle_images/{timestamp}_1.jpg"
@@ -407,7 +422,7 @@ class ImageBattleGenerator:
         downloaded2 = self.download_image(img2['download_url'], img2_path)
         
         if not downloaded1 or not downloaded2:
-            logger.error(" Failed to download images")
+            logger.error("❌ Failed to download images")
             return False
         
         # Оптимизация изображений под требования Telegram
@@ -416,16 +431,15 @@ class ImageBattleGenerator:
             return False
         
         logger.info("\n🤖 Generating comparison text...")
-        comparison_text = self.generate_comparison_text(img1, img2, access_token)
+        comparison_text = self.generate_comparison_text(img1, img2, category, access_token)
         logger.info(f" Text: {comparison_text}")
         
         logger.info("\n📤 Publishing to Telegram...")
-        # Передаем img1 и img2 для сохранения metadata
-        success = self.create_poll(comparison_text, img1_path, img2_path, img1, img2)
+        success = self.create_poll(comparison_text, img1_path, img2_path, query1, query2, category)
         
         return success
 
-# ─────────────────────────── Main ─────────────────────────────────
+# ──────────────────────────── Main ─────────────────────────────────
 
 def main():
     logger.info("🚀 Запуск Image Battle Bot — %s", datetime.now(timezone.utc).isoformat())
@@ -436,7 +450,7 @@ def main():
     success = generator.run(access_token)
     
     if success:
-        logger.info("🎉 Миссия выполнена успешно!")
+        logger.info(" Миссия выполнена успешно!")
         sys.exit(0)
     else:
         logger.error("🛑 Завершение работы с ошибкой.")
