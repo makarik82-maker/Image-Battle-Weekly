@@ -28,6 +28,54 @@ NASA_API_KEY = os.environ.get("NASA_API_KEY", "")
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 VERIFY_SSL = False
 
+# ──────────────────── Словарь переводов ──────────────────────────
+
+ПЕРЕВОДЫ = {
+    # Космос
+    'galaxy': 'Галактика',
+    'nebula': 'Туманность',
+    'stars': 'Звезды',
+    'astronomy': 'Астрономия',
+    'cosmos': 'Космос',
+    'space': 'Космос',
+    
+    # Природа
+    'mountain': 'Горы',
+    'forest': 'Лес',
+    'ocean': 'Океан',
+    'waterfall': 'Водопад',
+    'landscape': 'Пейзаж',
+    'river': 'Река',
+    
+    # Животные
+    'tiger': 'Тигр',
+    'lion': 'Лев',
+    'eagle': 'Орел',
+    'wolf': 'Волк',
+    'bear': 'Медведь',
+    'elephant': 'Слон',
+    
+    # Город
+    'cityscape': 'Городской пейзаж',
+    'architecture': 'Архитектура',
+    'urban': 'Город',
+    'skyline': 'Панорама города',
+    'building': 'Здание',
+    'street': 'Улица',
+    
+    # Абстракция
+    'abstract': 'Абстракция',
+    'patterns': 'Узоры',
+    'colors': 'Цвета',
+    'art': 'Искусство',
+    'design': 'Дизайн',
+    'geometric': 'Геометрия'
+}
+
+def перевести(текст: str) -> str:
+    """Переводит английский запрос на русский"""
+    return ПЕРЕВОДЫ.get(текст.lower(), текст.title())
+
 # ────────────────────── Токен GigaChat ─────────────────────────
 
 def получить_токен_gigachat() -> str | None:
@@ -59,7 +107,6 @@ def получить_токен_gigachat() -> str | None:
 
 class ГенераторБитвы:
     def __init__(self):
-        # Теперь это просто список тематик, а не пары
         self.категории = {
             'space': ['galaxy', 'nebula', 'stars', 'astronomy', 'cosmos'],
             'nature': ['mountain', 'forest', 'ocean', 'waterfall', 'landscape', 'river'],
@@ -68,12 +115,11 @@ class ГенераторБитвы:
             'abstract': ['abstract', 'patterns', 'colors', 'art', 'design', 'geometric']
         }
         
-        # Названия тематик для отображения
         self.названия_категорий = {
             'space': '🌌 Космос',
             'nature': '🌿 Природа',
             'animals': '🦁 Животные',
-            'city': '️ Город',
+            'city': '🏙️ Город',
             'abstract': '🎨 Абстракция'
         }
 
@@ -102,7 +148,7 @@ class ГенераторБитвы:
                 данные = response.json()
                 
                 if not данные or 'urls' not in данные:
-                    logger.warning(f"⚠️ Неверные данные ответа для {запрос}")
+                    logger.warning(f"️ Неверные данные ответа для {запрос}")
                     continue
                 
                 return {
@@ -174,12 +220,16 @@ class ГенераторБитвы:
             logger.warning("⚠️ Нет токена GigaChat, используем резервный текст")
             return self._резервный_текст(img1, img2, категория)
         
-        prompt = f"""Создай короткое увлекательное сравнение для двух изображений из одной тематики "{категория}" (максимум 2-3 предложения):
+        запрос1_рус = перевести(img1['query'])
+        запрос2_рус = перевести(img2['query'])
+        
+        prompt = f"""Создай короткое увлекательное сравнение для двух изображений из одной тематики (максимум 2-3 предложения):
 
-Изображение 1 ({img1['query']}): {img1['description'][:100]}
-Изображение 2 ({img2['query']}): {img2['description'][:100]}
+Изображение 1 ({запрос1_рус}): {img1['description'][:100]}
+Изображение 2 ({запрос2_рус}): {img2['description'][:100]}
 
 Стиль: дружелюбный, вовлекающий, с эмодзи. Заверши призывом к голосованию.
+ОТВЕЧАЙ ТОЛЬКО НА РУССКОМ ЯЗЫКЕ.
 Ответь ТОЛЬКО текстом сравнения без дополнительных пояснений."""
 
         url = "https://api.giga.chat/v1/chat/completions"
@@ -192,7 +242,7 @@ class ГенераторБитвы:
         payload = {
             "model": "GigaChat-2",
             "messages": [
-                {"role": "system", "content": "Ты создаешь короткие увлекательные тексты для соцсетей."},
+                {"role": "system", "content": "Ты создаешь короткие увлекательные тексты для соцсетей на русском языке."},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.7,
@@ -213,12 +263,14 @@ class ГенераторБитвы:
             return текст_ответа
             
         except Exception as e:
-            logger.warning(f"⚠️ Ошибка GigaChat: {e}, используем резервный текст")
+            logger.warning(f"️ Ошибка GigaChat: {e}, используем резервный текст")
             return self._резервный_текст(img1, img2, категория)
 
     def _резервный_текст(self, img1, img2, категория):
         """Резервный текст если GigaChat недоступен"""
-        return f"🔥 Битва в категории {self.названия_категорий.get(категория, категория)}!\n\n{img1['query'].title()} vs {img2['query'].title()} — что выбираете вы? ✨\n\nГолосуйте! "
+        запрос1_рус = перевести(img1['query'])
+        запрос2_рус = перевести(img2['query'])
+        return f"🔥 Битва в категории {self.названия_категорий.get(категория, категория)}!\n\n{запрос1_рус} vs {запрос2_рус} — что выбираете вы? ✨\n\nГолосуйте! 👇"
 
     def скачать_изображение(self, url, имя_файла):
         """Скачивание изображения"""
@@ -234,7 +286,7 @@ class ГенераторБитвы:
                 f.write(response.content)
             
             if путь.stat().st_size == 0:
-                logger.warning(f"️ Скачанный файл пуст: {имя_файла}")
+                logger.warning(f"⚠️ Скачанный файл пуст: {имя_файла}")
                 return None
             
             logger.info(f"✅ Скачано: {имя_файла} ({путь.stat().st_size} байт)")
@@ -271,6 +323,8 @@ class ГенераторБитвы:
             'category_name': self.названия_категорий.get(категория, категория),
             'img1_query': запрос1,
             'img2_query': запрос2,
+            'img1_query_ru': перевести(запрос1),
+            'img2_query_ru': перевести(запрос2),
             'img1_path': путь1,
             'img2_path': путь2,
             'comparison_text': текст_сравнения,
@@ -291,6 +345,9 @@ class ГенераторБитвы:
             logger.error("❌ Файлы изображений не найдены!")
             return False
         
+        запрос1_рус = перевести(запрос1)
+        запрос2_рус = перевести(запрос2)
+        
         try:
             # 1. Отправляем первое фото
             url = f"{TELEGRAM_API}/sendPhoto"
@@ -299,7 +356,7 @@ class ГенераторБитвы:
                 files = {'photo': f}
                 data = {
                     'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': f"🔥 {запрос1.title()}\n\n{текст}\n\n❤️ {запрос2.title()} ниже 👇",
+                    'caption': f"🔥 {запрос1_рус}\n\n{текст}\n\n❤️ {запрос2_рус} ниже 👇",
                     'parse_mode': 'Markdown'
                 }
                 response = requests.post(url, data=data, files=files, timeout=30)
@@ -313,7 +370,7 @@ class ГенераторБитвы:
                 files = {'photo': f}
                 data = {
                     'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': f"❤️ {запрос2.title()}",
+                    'caption': f"❤️ {запрос2_рус}",
                     'parse_mode': 'Markdown',
                     'reply_to_message_id': результат1['result']['message_id']
                 }
@@ -323,13 +380,13 @@ class ГенераторБитвы:
                 response.raise_for_status()
                 результат2 = response.json()
             
-            # 3. Создаем опрос с конкретными названиями
+            # 3. Создаем опрос с русскими названиями
             url_опроса = f"{TELEGRAM_API}/sendPoll"
             
             данные_опроса = {
                 'chat_id': TELEGRAM_CHAT_ID,
-                'question': f'🏆 {запрос1.title()} vs {запрос2.title()} — что круче?',
-                'options': [f'🔥 {запрос1.title()}!', f'❤️ {запрос2.title()}!', '🤝 Оба классные!'],
+                'question': f'🏆 {запрос1_рус} vs {запрос2_рус} — что круче?',
+                'options': [f'🔥 {запрос1_рус}!', f'❤️ {запрос2_рус}!', '🤝 Оба классные!'],
                 'is_anonymous': True,
                 'allows_multiple_answers': False,
                 'reply_to_message_id': результат2['result']['message_id']
@@ -359,7 +416,7 @@ class ГенераторБитвы:
             return True
             
         except Exception as e:
-            logger.error(f"❌ Ошибка публикации в Telegram: {e}")
+            logger.error(f" Ошибка публикации в Telegram: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -374,16 +431,16 @@ class ГенераторБитвы:
         
         # Выбираем два разных запроса из одной категории
         if len(запросы) < 2:
-            logger.error(f" Недостаточно запросов в категории {категория}")
+            logger.error(f"❌ Недостаточно запросов в категории {категория}")
             return False
         
         запрос1, запрос2 = random.sample(запросы, 2)
         
-        logger.info(f"⚔️ Битва: {self.названия_категорий.get(категория, категория)}")
-        logger.info(f"🆚 {запрос1.title()} vs {запрос2.title()}")
+        logger.info(f"️ Битва: {self.названия_категорий.get(категория, категория)}")
+        logger.info(f"🆚 {перевести(запрос1)} vs {перевести(запрос2)}")
         
         # Получаем первое изображение
-        logger.info(f"\n📸 Получаю изображение 1 ({запрос1})...")
+        logger.info(f"\n Получаю изображение 1 ({запрос1})...")
         img1 = self.получить_изображение_unsplash(запрос1)
         
         if not img1 and категория == 'space':
@@ -391,11 +448,11 @@ class ГенераторБитвы:
             img1 = self.получить_изображение_nasa()
         
         if not img1:
-            logger.info("🔄 Пробую резервный сервис...")
+            logger.info(" Пробую резервный сервис...")
             img1 = self.получить_резервное_изображение(запрос1)
         
         # Получаем второе изображение
-        logger.info(f"\n📸 Получаю изображение 2 ({запрос2})...")
+        logger.info(f"\n Получаю изображение 2 ({запрос2})...")
         img2 = self.получить_изображение_unsplash(запрос2)
         
         if not img2 and категория == 'space':
@@ -411,8 +468,8 @@ class ГенераторБитвы:
             return False
         
         logger.info(f"\n✅ Изображения успешно получены!")
-        logger.info(f"📸 Изображение 1 ({запрос1}): {img1['description'][:50]}...")
-        logger.info(f"📸 Изображение 2 ({запрос2}): {img2['description'][:50]}...")
+        logger.info(f"📸 Изображение 1 ({перевести(запрос1)}): {img1['description'][:50]}...")
+        logger.info(f"📸 Изображение 2 ({перевести(запрос2)}): {img2['description'][:50]}...")
         
         временная_метка = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
         путь1 = f"battle_images/{временная_метка}_1.jpg"
@@ -432,7 +489,7 @@ class ГенераторБитвы:
         
         logger.info("\n🤖 Генерирую текст сравнения...")
         текст_сравнения = self.сгенерировать_текст_сравнения(img1, img2, категория, токен_доступа)
-        logger.info(f" Текст: {текст_сравнения}")
+        logger.info(f"📝 Текст: {текст_сравнения}")
         
         logger.info("\n📤 Публикую в Telegram...")
         успех = self.создать_опрос(текст_сравнения, путь1, путь2, запрос1, запрос2, категория)
