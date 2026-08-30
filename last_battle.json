@@ -1,13 +1,13 @@
 {
-  "poll_message_id": 165,
+  "poll_message_id": 169,
   "chat_id": "-1003952151441",
   "category": "space",
   "category_name": "🌌 Космос",
-  "img1_query": "nebula",
-  "img2_query": "astronomy",
-  "img1_path": "battle_images/20260830_064406_1.jpg",
-  "img2_path": "battle_images/20260830_064406_2.jpg",
-  "comparison_text": "✨ Представьте, как красота космической туманности 🌌 создается на компьютере, сравнив это с захватывающей дух астрономической фотографией ⭐️ в пустыне Нью-Мексико! Кто думает, что компьютерные творения всегда уступают реальным пейзажам? 👇🏻 Голосуйте в комментариях!",
-  "created_at": "2026-08-30T06:44:12.818273+00:00",
+  "img1_query": "astronomy",
+  "img2_query": "cosmos",
+  "img1_path": "battle_images/20260830_064544_1.jpg",
+  "img2_path": "battle_images/20260830_064544_2.jpg",
+  "comparison_text": "🌌⠀⠀Experimental abstract vs vast cosmic beauty—which one makes you feel like an astronaut exploring unknown galaxies? Vote now! 🚀✨",
+  "created_at": "2026-08-30T06:45:50.516294+00:00",
   "battle_date": "2026-08-30"
 }
