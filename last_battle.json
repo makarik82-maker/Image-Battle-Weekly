@@ -1,15 +1,15 @@
 {
-  "poll_message_id": 185,
+  "poll_message_id": 245,
   "chat_id": "-1003952151441",
-  "category": "space",
-  "category_name": "🌌 Космос",
-  "img1_query": "galaxy",
-  "img2_query": "stars",
-  "img1_query_ru": "Галактика",
-  "img2_query_ru": "Звезды",
-  "img1_path": "battle_images/20260830_070311_1.jpg",
-  "img2_path": "battle_images/20260830_070311_2.jpg",
-  "comparison_text": "Представьте, как будто вы смотрите в гигантский телескоп 🔭 ⭐️ Первая картинка — целая галактика на расстоянии 2,5 миллиона световых лет, вторая — россыпь сверкающих звёзд прямо над головой! Что вам ближе? Голосуем вместе! 🌌✨",
-  "created_at": "2026-08-30T07:03:15.711774+00:00",
-  "battle_date": "2026-08-30"
+  "category": "abstract",
+  "category_name": "🎨 Абстракция",
+  "img1_query": "patterns",
+  "img2_query": "geometric",
+  "img1_query_ru": "Узоры",
+  "img2_query_ru": "Геометрия",
+  "img1_path": "battle_images/20260904_202422_1.jpg",
+  "img2_path": "battle_images/20260904_202422_2.jpg",
+  "comparison_text": "Узоры на стенах словно танцы кубиков 🕺 #переехал #голосование За какой интерьер отдаёте предпочтение?",
+  "created_at": "2026-09-04T20:24:33.106160+00:00",
+  "battle_date": "2026-09-04"
 }
