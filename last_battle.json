@@ -1,15 +1,15 @@
 {
-  "poll_message_id": 245,
+  "poll_message_id": 300,
   "chat_id": "-1003952151441",
-  "category": "abstract",
-  "category_name": "🎨 Абстракция",
-  "img1_query": "patterns",
-  "img2_query": "geometric",
-  "img1_query_ru": "Узоры",
-  "img2_query_ru": "Геометрия",
-  "img1_path": "battle_images/20260904_202422_1.jpg",
-  "img2_path": "battle_images/20260904_202422_2.jpg",
-  "comparison_text": "Узоры на стенах словно танцы кубиков 🕺 #переехал #голосование За какой интерьер отдаёте предпочтение?",
-  "created_at": "2026-09-04T20:24:33.106160+00:00",
-  "battle_date": "2026-09-04"
+  "category": "animals",
+  "category_name": "🦁 Животные",
+  "img1_query": "wolf",
+  "img2_query": "bear",
+  "img1_query_ru": "Волк",
+  "img2_query_ru": "Медведь",
+  "img1_path": "battle_images/20260911_203701_1.jpg",
+  "img2_path": "battle_images/20260911_203701_2.jpg",
+  "comparison_text": "Волчья грация среди канадских скал против милого медвежонка на земле 🦍🐻 Кто очаровал тебя больше? 👇",
+  "created_at": "2026-09-11T20:37:10.662462+00:00",
+  "battle_date": "2026-09-11"
 }
