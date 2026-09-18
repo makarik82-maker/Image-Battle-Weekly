@@ -1,15 +1,15 @@
 {
-  "poll_message_id": 300,
+  "poll_message_id": 353,
   "chat_id": "-1003952151441",
-  "category": "animals",
-  "category_name": "🦁 Животные",
-  "img1_query": "wolf",
-  "img2_query": "bear",
-  "img1_query_ru": "Волк",
-  "img2_query_ru": "Медведь",
-  "img1_path": "battle_images/20260911_203701_1.jpg",
-  "img2_path": "battle_images/20260911_203701_2.jpg",
-  "comparison_text": "Волчья грация среди канадских скал против милого медвежонка на земле 🦍🐻 Кто очаровал тебя больше? 👇",
-  "created_at": "2026-09-11T20:37:10.662462+00:00",
-  "battle_date": "2026-09-11"
+  "category": "city",
+  "category_name": "🏙️ Город",
+  "img1_query": "urban",
+  "img2_query": "skyline",
+  "img1_query_ru": "Город",
+  "img2_query_ru": "Панорама города",
+  "img1_path": "battle_images/20260918_203256_1.jpg",
+  "img2_path": "battle_images/20260918_203256_2.jpg",
+  "comparison_text": "Город в воздухе 🛫 vs город в сумерках ⭐️ Какой тебе ближе? Голосуем вместе!",
+  "created_at": "2026-09-18T20:33:06.270362+00:00",
+  "battle_date": "2026-09-18"
 }
