@@ -1,15 +1,15 @@
 {
-  "poll_message_id": 457,
+  "poll_message_id": 509,
   "chat_id": "-1003952151441",
-  "category": "city",
-  "category_name": "🏙️ Город",
-  "img1_query": "urban",
-  "img2_query": "building",
-  "img1_query_ru": "Город",
-  "img2_query_ru": "Здание",
-  "img1_path": "battle_images/20261002_215444_1.jpg",
-  "img2_path": "battle_images/20261002_215444_2.jpg",
-  "comparison_text": "🌅 Нью-Йорк вечером — огни небоскрёбов Empire State Building и уличного движения создают магию города контрастов. ⚡️✨ А на другом кадре — бурлящая жизнь улицы, где автомобили и высокие здания соревнуются за внимание прохожих. Кого выберете вы? 🗳️ Голосуем за красоту родного города!",
-  "created_at": "2026-10-02T21:54:50.732830+00:00",
-  "battle_date": "2026-10-02"
+  "category": "space",
+  "category_name": "🌌 Космос",
+  "img1_query": "nebula",
+  "img2_query": "cosmos",
+  "img1_query_ru": "Туманность",
+  "img2_query_ru": "Космос",
+  "img1_path": "battle_images/20261009_222234_1.jpg",
+  "img2_path": "battle_images/20261009_222234_2.jpg",
+  "comparison_text": "🌌 Карина-небула — словно пушистые облака водорода в космическом саду, а Андромеда-гигант 🪙— величественная туманность в инфракрасном сиянии. Кто больше нравится? Голосуем!",
+  "created_at": "2026-10-09T22:22:41.311545+00:00",
+  "battle_date": "2026-10-09"
 }
