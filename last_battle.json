@@ -1,15 +1,15 @@
 {
-  "poll_message_id": 561,
+  "poll_message_id": 614,
   "chat_id": "-1003952151441",
-  "category": "space",
-  "category_name": "🌌 Космос",
-  "img1_query": "nebula",
-  "img2_query": "astronomy",
-  "img1_query_ru": "Туманность",
-  "img2_query_ru": "Астрономия",
-  "img1_path": "battle_images/20261016_203655_1.jpg",
-  "img2_path": "battle_images/20261016_203655_2.jpg",
-  "comparison_text": "🌌 Первое изображение — как волшебное небесное шоу, пульсирующее пурпуром и блеском звёзд. 🌠 Второе — словно старинная карта звёздного неба, полная загадок и открытий. ⭐ Кому больше нравится космос? Голосуйте за ваше любимое астрономическое чудо!",
-  "created_at": "2026-10-16T20:37:09.535530+00:00",
-  "battle_date": "2026-10-16"
+  "category": "nature",
+  "category_name": "🌿 Природа",
+  "img1_query": "mountain",
+  "img2_query": "forest",
+  "img1_query_ru": "Горы",
+  "img2_query_ru": "Лес",
+  "img1_path": "battle_images/20261023_210604_1.jpg",
+  "img2_path": "battle_images/20261023_210604_2.jpg",
+  "comparison_text": "🌄 Кремовые горы vs 🌲 густой лес с высокими соснами и моховым ковром под ногами — какое природное чудо тебе ближе? Голосуем вместе!",
+  "created_at": "2026-10-23T21:06:10.082477+00:00",
+  "battle_date": "2026-10-23"
 }
